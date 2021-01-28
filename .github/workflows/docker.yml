@@ -1,0 +1,81 @@
+#!/usr/bin/env cat
+
+name: Build Docker Image
+
+on:
+  push:
+    tags:
+    - v0.*
+    - v2.*
+    - v1.*
+    branches:
+    - master
+    - main
+  pull_request:
+    branches:
+    - master
+    - main
+  schedule:
+  - cron: 0 0 * * *
+  workflow_dispatch:
+    inputs:
+      hello:
+        required: false
+        default: world
+        description: test
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      DOCKER_USER: fincotech
+      DOCKER_BUILDKIT: "1"
+      DOCKER_CLI_EXPERIMENTAL: enabled
+      DOCKER_PLATFORMS: |
+        linux/amd64
+        linux/arm64
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v2
+    - name: Login to DockerHub
+      env:
+        DOCKER_TOKEN: ${{ secrets.DOCKER_TOKEN }}
+      run: |
+        docker login -u "${DOCKER_USER}" -p "${DOCKER_TOKEN}"
+    - name: Prepare Builder (buildx)
+      run: |
+        PLATFORMS=$(tr -s '[:space:]' ',' <<< "${DOCKER_PLATFORMS}" )
+        docker run --rm --privileged multiarch/qemu-user-static:latest --reset -p yes
+        docker buildx create --use --name=multiarch --platform="${PLATFORMS%,}"
+        docker buildx inspect --bootstrap
+        docker buildx install
+        docker buildx use --default multiarch
+    - name: Build images
+      env:
+        IMAGE_NAME: laika
+        DOCKERFILE: Dockerfile
+      run: |
+        PLATFORMS="$(tr -s '[:space:]' ',' <<< "${DOCKER_PLATFORMS}" )"
+        REFERENCE="${GITHUB_REF##*/}"
+        case "${REFERENCE}" in
+          merge)
+            REFERENCE=pr-$(basename $(dirname ${GITHUB_REF}))
+            ;;
+          master)
+            REFERENCE=latest
+            ;;
+        esac
+        docker buildx build \
+        --cache-from="${DOCKER_USER}/cache:${IMAGE_NAME}" \
+        --cache-to="${DOCKER_USER}/cache:${IMAGE_NAME}" \
+        --platform="${PLATFORMS%,}" \
+        --pull \
+        --push \
+        -f="${DOCKERFILE}" \
+        -t="${DOCKER_USER}/${IMAGE_NAME}:${REFERENCE////.}" \
+        -t="${DOCKER_USER}/${IMAGE_NAME}:${GITHUB_SHA}" \
+        "."

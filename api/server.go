@@ -67,8 +67,10 @@ func NewServer(conf ServerConfig) (*echo.Echo, error) {
 	// Private(behind auth) routes go here
 	privateApi.POST("/events/:type", events.Create)
 	privateApi.GET("/features/:name", GetFeature)
+	//privateApi.POST("/features/:name", CreateFeature)
 	privateApi.GET("/features", ListFeatures)
 	privateApi.GET("/environments", ListEnvironments)
+	//privateApi.POST("/environments/:name", CreateEnvironment)
 	privateApi.GET("/*", func(c echo.Context) error { return NotFound(c) })
 
 	e.Static("/assets", "dashboard/public/assets")
