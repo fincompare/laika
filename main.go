@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"time"
@@ -10,6 +11,8 @@ import (
 	"github.com/MEDIGO/laika/notifier"
 	"github.com/MEDIGO/laika/store"
 	log "github.com/Sirupsen/logrus"
+	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/secretsmanager"
 	"github.com/urfave/cli"
 	graceful "gopkg.in/tylerb/graceful.v1"
 )
@@ -93,12 +96,51 @@ func main() {
 			Usage:  "Slack webhook URL",
 			EnvVar: "LAIKA_SLACK_WEBHOOK_URL",
 		},
+		cli.StringFlag{
+			Name:   "aws-secret-id",
+			Usage:  "AWS Secret ID",
+			EnvVar: "LAIKA_AWS_SECRET_ID",
+		},
+		cli.StringFlag{
+			Name:   "aws-profile",
+			Usage:  "AWS Profile",
+			EnvVar: "LAIKA_AWS_PROFILE",
+		},
 	}
 	app.Commands = []cli.Command{
 		{
 			Name:  "run",
 			Usage: "Runs laika's feature flag service",
 			Action: func(c *cli.Context) error {
+				if secretID := c.GlobalString("aws-secret-id"); secretID != "" {
+					awsProfile := c.GlobalString("aws-profile")
+					awsSession := session.Must(session.NewSessionWithOptions(session.Options{
+						SharedConfigState: session.SharedConfigEnable,
+						Profile: awsProfile,
+					}))
+					ssm := secretsmanager.New(awsSession)
+					secretValue, err := ssm.GetSecretValue(&secretsmanager.GetSecretValueInput{
+						SecretId: &secretID,
+					})
+					if err != nil {
+						log.Panic("Cannot read aws-secret-id:", err)
+					}
+					type DbSecretAws struct {
+						User string `json:"DB_USER"`
+						Pass string `json:"DB_PASS"`
+						Host string `json:"DB_HOST"`
+						Port string `json:"DB_PORT"`
+						Name string `json:"DB_NAME"`
+					}
+					var decodedSecrets DbSecretAws
+					json.Unmarshal(secretValue.SecretBinary, &decodedSecrets)
+					log.Println("data-retrieved", decodedSecrets)
+					c.GlobalSet("mysql-username", decodedSecrets.User)
+					c.GlobalSet("mysql-password", decodedSecrets.Pass)
+					c.GlobalSet("mysql-host",     decodedSecrets.Host)
+					c.GlobalSet("mysql-port",     decodedSecrets.Port)
+					c.GlobalSet("mysql-dbname",   decodedSecrets.Name)
+				}
 				store, err := store.NewMySQLStore(
 					c.GlobalString("mysql-username"),
 					c.GlobalString("mysql-password"),
