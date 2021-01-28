@@ -133,8 +133,8 @@ func main() {
 						Name string `json:"schema"`
 					}
 					var decodedSecrets DbSecretAws
-					json.Unmarshal(secretValue.SecretBinary, &decodedSecrets)
-					log.Println("data-retrieved", decodedSecrets)
+					json.Unmarshal([]byte(*secretValue.SecretString), &decodedSecrets)
+					log.Debugln("data-retrieved", decodedSecrets)
 					c.GlobalSet("mysql-username", decodedSecrets.User)
 					c.GlobalSet("mysql-password", decodedSecrets.Pass)
 					c.GlobalSet("mysql-host",     decodedSecrets.Host)
