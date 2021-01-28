@@ -126,15 +126,15 @@ func main() {
 						log.Panic("Cannot read aws-secret-id:", err)
 					}
 					type DbSecretAws struct {
-						User string `json:"DB_USER"`
-						Pass string `json:"DB_PASS"`
-						Host string `json:"DB_HOST"`
-						Port string `json:"DB_PORT"`
-						Name string `json:"DB_NAME"`
+						User string `json:"username"`
+						Pass string `json:"password"`
+						Host string `json:"host"`
+						Port string `json:"port"`
+						Name string `json:"schema"`
 					}
 					var decodedSecrets DbSecretAws
-					json.Unmarshal(secretValue.SecretBinary, &decodedSecrets)
-					log.Println("data-retrieved", decodedSecrets)
+					json.Unmarshal([]byte(*secretValue.SecretString), &decodedSecrets)
+					log.Debugln("data-retrieved", decodedSecrets)
 					c.GlobalSet("mysql-username", decodedSecrets.User)
 					c.GlobalSet("mysql-password", decodedSecrets.Pass)
 					c.GlobalSet("mysql-host",     decodedSecrets.Host)
