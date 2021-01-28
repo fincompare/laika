@@ -129,17 +129,24 @@ func main() {
 						User string `json:"username"`
 						Pass string `json:"password"`
 						Host string `json:"host"`
-						Port string `json:"port"`
+						Port int    `json:"port"`
 						Name string `json:"schema"`
 					}
+					//log.SetLevel(log.DebugLevel)
 					var decodedSecrets DbSecretAws
 					json.Unmarshal([]byte(*secretValue.SecretString), &decodedSecrets)
 					log.Debugln("data-retrieved", decodedSecrets)
 					c.GlobalSet("mysql-username", decodedSecrets.User)
 					c.GlobalSet("mysql-password", decodedSecrets.Pass)
 					c.GlobalSet("mysql-host",     decodedSecrets.Host)
-					c.GlobalSet("mysql-port",     decodedSecrets.Port)
+					c.GlobalSet("mysql-port",     fmt.Sprint(decodedSecrets.Port))
 					c.GlobalSet("mysql-dbname",   decodedSecrets.Name)
+					log.Debugln(c.GlobalFlagNames())
+					log.Debugln(c.GlobalString("mysql-username"))
+					log.Debugln(c.GlobalString("mysql-password"))
+					log.Debugln(c.GlobalString("mysql-host"))
+					log.Debugln(c.GlobalString("mysql-port"))
+					log.Debugln(c.GlobalString("mysql-dbname"))
 				}
 				store, err := store.NewMySQLStore(
 					c.GlobalString("mysql-username"),
