@@ -73,7 +73,6 @@ jobs:
         --cache-from="${DOCKER_USER}/cache:${IMAGE_NAME}" \
         --cache-to="${DOCKER_USER}/cache:${IMAGE_NAME}" \
         --platform="${PLATFORMS%,}" \
-        --ssh=default \
         --pull \
         --push \
         -f="${DOCKERFILE}" \
