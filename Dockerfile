@@ -1,4 +1,4 @@
-#!/usr/bin/env -S docker build --compress -t fincotech/laika -f
+# syntax=docker/dockerfile:experimental
 
 ARG APP_API_PATH=/go/src/github.com/fincompare/laika
 ARG APP_DASH_PATH=/usr/src/app
@@ -11,10 +11,12 @@ COPY \
 	./dashboard/yarn.lock \
 	./dashboard/package.json \
 	./
-RUN  yarn install
+RUN --mount=type=cache,rw,target=./node_modules,source=./dashboard/node_modules \
+	yarn install
 
 COPY ./dashboard/ ./
-RUN  yarn build
+RUN --mount=type=cache,rw,target=./node_modules,source=./dashboard/node_modules \
+	yarn build
 
 
 FROM golang:1.13-alpine AS api
@@ -31,7 +33,8 @@ RUN go mod download
 
 COPY ./ ./
 ARG CGO_ENABLED=0
-RUN go build -o bin/laika .
+RUN --mount=type=cache,rw,target=./vendor,source=./vendor \
+	go build -o bin/laika .
 
 FROM alpine:latest AS runtime
 
